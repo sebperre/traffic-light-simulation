@@ -1,0 +1,7 @@
+requests
+datetime
+pytz
+geopandas
+matplotlib
+contextily
+shapely
