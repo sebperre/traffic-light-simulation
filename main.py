@@ -9,6 +9,9 @@ import numpy as np
 import heapq
 from heapq import heappush, heappop
 from collections import deque
+import random
+from scipy.stats import t,norm
+import math
 
 # Long-Lat for Traffic Lights
 OAKFOUL_VIC = "48.426442.-123.3226985"
@@ -29,6 +32,8 @@ AVESUFFREN_PARIS = "48.854664.2.295528"
 DIST_BETWEEN_CARS = 8.96 # meters
 AVG_CAR_LENGTH = 4.48 # meters
 
+KM_H_TO_M_S=3.6
+
 class Lane:
     def __init__(self):
         pass
@@ -46,11 +51,11 @@ def read_tomtom_data(date_times: list = [], intersections = [], error_on_not_fou
 
     Parameters:
     date_times (list): A list of date-time values (dates and hours) for which the data should 
-                        be fetched. If date_times is empty, it is preceived as wanting all dates and times.
+        be fetched. If date_times is empty, it is preceived as wanting all dates and times.
     intersections (list): A list of strings of long and lat sepearted by a . for which the data should 
-                        be fetched. If intersections is empty, it is preceived as wanting all intersections available.
+        be fetched. If intersections is empty, it is preceived as wanting all intersections available.
     error_on_not_found (bool): If True, an error is raised when the data is not found. If False, 
-                               the function proceeds without raising an error.
+        the function proceeds without raising an error.
 
     Returns:
     dict: A dictionary containing the TomTom data and traffic light coordinates.
@@ -163,192 +168,243 @@ def simulate_arrivals(queues, lambdas, num_events): # lanes
     '''
     for each lane per approach
     '''
+
     assert(len(queues)==len(lambdas))
-    for i,approach in enumerate(queues):
-        assert(len(approach)==len(lambdas[i]))
-        # for j,lane in enumerate(approach):
-        for j in range(len(approach)):
-            # print(j)
-            lam = lambdas[i][j]
-            inter_arrival_times = np.random.exponential(1 / lam, num_events)
-            arrival_times = np.cumsum(inter_arrival_times)
-            approach[j]=arrival_times # overwrite lane as it should be empty at this point
+
+    rows = len(queues)
+    cols = len(queues[0]) if rows > 0 else 0
+
+    inter_arrival_times = [[[] for _ in range(cols)] for _ in range(rows)]
+
+    for num_event in range(num_events):
+        rand_queue_index = random.choice(range(len(queues)))
+        assert(len(queues[rand_queue_index]) == len(lambdas[rand_queue_index]))
+        rand_inlane_index = random.choice(range(len(queues[rand_queue_index])))
+
+        lam = lambdas[rand_queue_index][rand_inlane_index]
+        inter_arrival_time = random.expovariate(lam)
+        inter_arrival_times[rand_queue_index][rand_inlane_index].append(inter_arrival_time)
+    
+    for i, direction in enumerate(queues):
+        for j, inlane in enumerate(direction):
+            arrival_times = np.cumsum(inter_arrival_times[i][j])
+            queues[i][j]=arrival_times # overwrite lane as it should be empty at this point
 
 def merge_queues_with_priority(approaches): 
     '''
     merge approaches->lanes->... into one big PQ
     '''
     merged_queue = []
+    lane_count=0
     for i,approach in enumerate(approaches):
         for j,lane in enumerate(approach):
             for arrival_time in lane:
-                heapq.heappush(merged_queue, (arrival_time,i))  # (time, queue index)
+                heapq.heappush(merged_queue, (arrival_time, i, lane_count))  # (time, (approach, lane))
+            lane_count+=1
     return merged_queue
 
-
-# def simulate_intersection(merged_arrival_times):
-#     AT = 0 # constants
-#     LANE = 1
-#     ID = 2
-
-#     VEHICLE_PROCESSING_TIME = 2
-
-#     current_time = 0
-#     arrival_events = [] # priorityqueue, contains (AT,queue)
-#     processing_queue = []
-
-#     # times since epoch
-#     queue_arrival_times={}
-#     queue_leave_times={} # arrive at intersection
-#     processed_times={} # leave intersection
-
-#     num_vehicles = 0 # serves as ID
-#     for arrival_time, lane in merged_arrival_times:
-#         heappush(arrival_events, (arrival_time, lane, num_vehicles))
-#         num_vehicles = num_vehicles+1
-
-#     while arrival_events or processing_queue:
-#         if not processing_queue: # skip time forward to event 0
-#             current_time = arrival_events[0][AT]
-        
-#         # Process arrival events that are due
-#         # while
-#         if arrival_events and arrival_events[0][AT]<=current_time:
-#             event_time,lane,id = heappop(arrival_events)
-#             heappush(processing_queue, (current_time,lane,id))
-            
-#             # set arrival times
-#             queue_arrival_times[id] = event_time
-
-#             # set leave queue time
-#             queue_leave_times[id] = current_time
-
-#         # Process the vehicle in the processing queue
-#         if processing_queue:
-#             start_time,lane,id = processing_queue.pop(0)
-#             processing_time = max(current_time,start_time) + VEHICLE_PROCESSING_TIME
-            
-#             assert(current_time==queue_leave_times[id])
-
-#             # set process time (leave intersection)
-#             processed_times[id] = processing_time
-
-#             current_time = processing_time  # Update current time to reflect the vehicle's departure time
-    
-#     return queue_arrival_times,queue_leave_times,processed_times
-
-from heapq import heappop, heappush
-from collections import deque
-
-def simulate_intersection_fixed(merged_arrival_times):
+def simulate_intersection_fixed(approaches, merged_arrival_times, free_flow_speed, current_speed, intersection_length, light_cycle_duration: float = 10):
     '''
-    fixed interval light intersection
-    logic: alternate between north-south, east-west queues.
+    fixed interval light intersection, on light_cycle_duration intervals.
+    alternates between north-south, east-west.
+    assumes that there are 4 approaches; n,e,s,w
+    intersection delay/processing time is determined by current_speed and distance.
     '''
-    AT = 0  # arrival time index
-    LANE = 1
+    # tuple index constants
+    AT = 0
+    LANE = 1 
     ID = 2
 
-    VEHICLE_PROCESSING_TIME = 2  # seconds per vehicle
-    LIGHT_CYCLE_DURATION = 10  # seconds
+    # group constants (we know there will always be 4 groups)
+    NORTH_SOUTH = (0,2)
+    EAST_WEST = (1,3)
 
-    def get_lane_group(lane):
-        if lane in (0,1,4,5): # these are north-south lanes
-            return "north_south"
-        elif lane in (2,3,6,7): # these are east-west lanes
-            return "east_west"
+    def have_active_queues():
+        # returns True if we have at least one lane with something in it.
+        # False otherwise.
+        for lane in queues:
+            if len(lane)>0:
+                return True
+        return False
+
+    def get_group_queues(group):
+        qs=[]
+        ids=[]
+        for g in group:
+            for q in lane_groups[g]:
+                ids.append(q)
+                qs.append(queues[q])
+        return qs,ids
+
+    def queues_active(queue_ids):
+        active_queues=[]
+        active_ids=[]
+        for id in queue_ids:
+            if queues[id]:
+                active_queues.append(queues[id])
+                active_ids.append(id)
+        return active_queues,active_ids
 
     current_time = 0
-    arrival_events = [] # PQ
-    queues = { 
-        "north_south": deque(),
-        "east_west": deque()
-    }
+    arrival_events = []
+    queues = [] # 0-7 for 8 lanes
+    lane_groups={} # group id->lane # (0-7 for 8 lanes)
+    num_queuelanes=0
+
+    # fill out queues and lane_groups
+    for i,approach in enumerate(approaches):
+        if i not in lane_groups.keys():
+            lane_groups[i]=[]
+
+        for lane in approach:
+            queues.append(deque())
+            lane_groups[i].append(num_queuelanes)
+            num_queuelanes=num_queuelanes+1
+
+    # push arriving vehicles onto heap, preserving what lane it is.
+    num_vehicles = 0 # id
+    for arrival_time, approach, lane in merged_arrival_times:
+        heappush(arrival_events, (arrival_time, lane, num_vehicles)) # lane = group
+        num_vehicles += 1
+
+    # Traffic light management
+    light_group = NORTH_SOUTH if random.random()>=0.5 else EAST_WEST
+    next_light_switch = light_cycle_duration
 
     # metrics
+    max_queue_len=0
     queue_arrival_times = {}
     queue_leave_times = {}
     processed_times = {}
 
-    num_vehicles = 0 # ID
-    for arrival_time, lane in merged_arrival_times:
-        heappush(arrival_events, (arrival_time,lane,num_vehicles))
-        num_vehicles += 1
+    delay_start_from_stop = [random.uniform(1,4) for _ in range(num_queuelanes)] # delay from stop
+    green_light_num_processed=0
+    green_light_time_start=0
+    green_light_time=0
 
-    # Traffic light management
-    light_group = "north_south" # start with this
-    next_light_switch = LIGHT_CYCLE_DURATION
+    any_queue_is_active = have_active_queues()
 
-    while arrival_events or queues["north_south"] or queues["east_west"]:
-        # Advance time to the next event if necessary
-        if not (queues["north_south"] or queues["east_west"]):
+    completeTimes=[]
+    beginTime=None
+
+    while arrival_events or any_queue_is_active:
+        if not any_queue_is_active: # Advance time to the next event
             if arrival_events:
                 current_time = max(current_time, arrival_events[0][AT])
             else:
-                break  # No vehicles left to process
-
+                # No vehicles left to process
+                break
+        
         # Process arrival events
         while arrival_events and arrival_events[0][AT] <= current_time:
             event_time, lane, id = heappop(arrival_events)
-            group = get_lane_group(lane)
-            queues[group].append((lane, id))
+
+            queues[lane].append(id)
             queue_arrival_times[id] = event_time
 
-        # Check traffic light logic and process queues
+        # kep track of max queue length
+        if len(queues[lane])>max_queue_len:
+            max_queue_len=len(queues[lane])
+
+        # Traffic light logic
+        # simple time-based switch
         if current_time >= next_light_switch:
-            # Switch light group
-            light_group = "east_west" if light_group == "north_south" else "north_south"
-            next_light_switch = current_time + LIGHT_CYCLE_DURATION
+            light_group = EAST_WEST if light_group == NORTH_SOUTH else NORTH_SOUTH
+            next_light_switch = current_time + light_cycle_duration 
+            delay_start_from_stop = [random.uniform(1,4) for _ in range(num_queuelanes)] 
 
-        # Process vehicles in the active queue
-        if queues[light_group]:
-            lane, id = queues[light_group].popleft()
-            start_time = max(current_time,queue_leave_times.get(id,current_time))
-            processing_time = start_time + VEHICLE_PROCESSING_TIME
+        # Process vehicles in light_group queues (opposing directions)
+        queue_index = None
+        _,group_ids = get_group_queues(light_group)
+        active_queues,_ = queues_active(group_ids)
 
-            queue_leave_times[id] = current_time
-            processed_times[id] = processing_time
+        if active_queues:
+            for queue in active_queues:
 
-            current_time = processing_time  # Update the current time to the vehicle's departure time
-        else:
-            # No vehicles in the current group; skip to the next light switch or next arrival
+                if current_time>=next_light_switch:
+                    light_group = EAST_WEST if light_group == NORTH_SOUTH else NORTH_SOUTH
+                    next_light_switch = current_time + light_cycle_duration 
+                    delay_start_from_stop = [random.uniform(1,4) for _ in range(num_queuelanes)] 
+                    break
+
+                if queue: # has vehicles
+                    id = queue.popleft()
+                    # print('process',id)
+
+                    beginTime=current_time
+                    
+                    queue_index = queues.index(queue)
+
+                    assert(current_time==queue_leave_times.get(id, current_time))
+                    
+                    # time spent in intersection.
+                    # t = d/v
+                    if delay_start_from_stop[queue_index]==0:
+                        t = intersection_length/free_flow_speed
+                    else:
+                        t = intersection_length/current_speed
+
+                    # processing time includes time to start from stop AND time in intersection
+                    processing_time = delay_start_from_stop[queue_index] + t
+                    # print(processing_time)
+
+                    queue_leave_times[id] = current_time
+
+                    current_time = current_time + processing_time
+
+                    processed_times[id] = current_time
+
+                    # other cars won't be delayed any further, 
+                    # as this car delays the others by setting curt+pt
+                    delay_start_from_stop[queue_index] = 0
+
+        else: # skip time to the next light switch
+
+            if beginTime!=None:
+                completeTimes.append(current_time-beginTime)
+            beginTime=None
+
             if arrival_events:
                 next_event_time = arrival_events[0][AT]
-                current_time = min(next_event_time,next_light_switch)
+                current_time = min(next_event_time, next_light_switch)
             else:
+                assert(next_light_switch>current_time) # if this fails, we're processing cars while we have a red light!
                 current_time = next_light_switch
+        any_queue_is_active = have_active_queues()
 
-    return queue_arrival_times,queue_leave_times,processed_times
+    if (len(completeTimes)>0):
+        avg=np.mean(completeTimes)
+    else:
+        avg=0
 
+    return current_time,max_queue_len,queue_arrival_times,queue_leave_times,processed_times,avg
 
-def main():
-    # Read in the intersection lane data
-    intersections = read_intersections() # This reads our manually create json file to get the lane data
-    intersection_name = list(intersections.keys())[0] # Only get one intersection
-    intersection_data = intersections[intersection_name] # Get the intersection data for that one intersection
+def confidence_interval(data, alpha): # per minute
+    mean = np.mean(data)
+    std_dev = np.std(data, ddof=1)
+    n = len(data)
 
-    # set up lanes
+    std_error = std_dev / np.sqrt(n)
 
-    approaches=[] # n,e,s,w
-    approaches.append([Queue() for x in range(intersection_data['north']['inlanes'])])
-    approaches.append([Queue() for x in range(intersection_data['east']['inlanes'])])
-    approaches.append([Queue() for x in range(intersection_data['south']['inlanes'])])
-    approaches.append([Queue() for x in range(intersection_data['west']['inlanes'])])
+    # z_score = norm.ppf(1-alpha/2) 
+    t_score = t.ppf(1-alpha/2, n-1)
 
+    lower_bound = mean - t_score * std_error
+    upper_bound = mean + t_score * std_error
+
+    return lower_bound,upper_bound
+
+def run_simulation(date_time, intersection, intersection_coords, approaches, num_events):
     # Read in the TomTom data for the intersections
-    data = read_tomtom_data(date_times=["2024-12-01H21M00"], intersections=[OAKFOUL_VIC]) # Reads only for one date
+    data = read_tomtom_data(date_times=[date_time], intersections=[intersection]) # Reads only for one date
     data_flat = flatten(data)
-
-    # get traffic for this coordinate
-
-    coords = intersection_data['coords']
 
     # Gather args for intersections in TomTom data
     ways=[]
     args_tomtom = {}
     for entry in data_flat:
         traffic_light_coord = entry['traffic_light_coord']
-        if (traffic_light_coord["lat"] == str(coords["lat"]) and traffic_light_coord["long"] == str(coords["long"])):
+        if (traffic_light_coord["lat"] == str(intersection_coords["lat"]) and traffic_light_coord["long"] == str(intersection_coords["long"])):
             ways.append(entry)
             args_tomtom['current_speed'] = entry['currentSpeed']
             args_tomtom['free_flow_speed'] = entry["freeFlowSpeed"]
@@ -362,11 +418,14 @@ def main():
         for inlane in approach:
             num_inlanes += 1
 
-    # Calculate lambda for the whole system
-    lambda_free_flow = args_tomtom['free_flow_speed'] / (3.6 * (DIST_BETWEEN_CARS + AVG_CAR_LENGTH)) # s_Free / (3.6 * (c + L_car))
-    congestion_factor = args_tomtom['free_flow_speed'] / args_tomtom['current_speed'] # s_Free / s_Current
+    # Calculated visually
+    intersection_length = 26.64 # meters
 
+    # Calculate lambda for the whole system
+    lambda_free_flow = args_tomtom['free_flow_speed'] / (KM_H_TO_M_S * (DIST_BETWEEN_CARS + AVG_CAR_LENGTH)) # s_Free / (3.6 * (c + L_car))
+    congestion_factor = args_tomtom['free_flow_speed'] / args_tomtom['current_speed'] # s_Free / s_Current
     lambda_system = num_inlanes * lambda_free_flow * congestion_factor # lambda = N_{In Lanes} * lambda_{Free Flow per Lane} * R
+    vehicle_processing_rate = args_tomtom['free_flow_speed'] / (KM_H_TO_M_S * intersection_length)
 
     # Calculate lambda for each in lane
     lambdas = []
@@ -379,7 +438,6 @@ def main():
         lambdas.append(dir_lambdas)
 
     # simulate lanes
-    num_events = 1000
 
     # fill inter-arrival times for approaches->lanes->IAT
     simulate_arrivals(approaches, lambdas, num_events)
@@ -387,21 +445,82 @@ def main():
     # merge queues into one giant queue (with queue as an attribute)    
     merged_arrival_times = merge_queues_with_priority(approaches) # intersection
 
+    light_time=20
+
     # simulate fixed-light intersection 
-    queue_arrival_times,queue_departure_times,intersection_processed_times = simulate_intersection_fixed(merged_arrival_times)
-    # values are epoch-based (not 'inter-...')
+    simulation_end_time,max_queue_len,queue_arrival_times,queue_departure_times,intersection_processed_times,avg_intersection_clear_time = simulate_intersection_fixed(approaches, merged_arrival_times, args_tomtom['free_flow_speed']/3.6, args_tomtom['current_speed']/3.6, intersection_length, light_time)
+
+    waiting_times=[]
+    avg_intersection_clear_time_avg=[]
 
     # Print the results
     for i in queue_arrival_times.keys():
-        QAT = round(queue_arrival_times[i],2) # time of entering queue
-        QDT = round(queue_departure_times[i],2) # time of leaving queue / entering intersection
-        IPT = round(intersection_processed_times[i],2) # time of leaving intersection
-        QWT = round(QDT-QAT,2) # queue wait time
-        IWT = round(IPT-QDT,2) # intersection wait time
 
-        # only show first 20
-        if i<20:
-            print(i, 'QAT', QAT, 'QWT:', QWT, 'IWT:', IWT)
+        TimeEnterQueue = queue_arrival_times[i] # time of entering queue
+        TimeEnterIntersection = queue_departure_times[i] # time of leaving queue / entering intersection
+        TimeLeaveIntersection = intersection_processed_times[i] # time of leaving intersection
 
+        QueueWaitTime = TimeEnterIntersection-TimeEnterQueue # queue wait time
+        IntersectionProcessTime = TimeLeaveIntersection-TimeEnterIntersection # Intersection processing Time (Time for one vehicle to get from the beginning of the intersection to the end)
+        TotalWaitTime = TimeLeaveIntersection-TimeEnterQueue
+
+        avg_intersection_clear_time_avg.append(avg_intersection_clear_time)
+
+        waiting_times.append(QueueWaitTime)
+
+    events_per_second = num_events/simulation_end_time
+
+    average_waiting_time=(sum(waiting_times)/len(waiting_times))
+
+    return waiting_times,average_waiting_time,events_per_second,max_queue_len,avg_intersection_clear_time_avg
+
+def main():
+    # Read in the intersection lane data
+    intersections = read_intersections() # This reads our manually create json file to get the lane data
+    intersection_name = list(intersections.keys())[0] # Only get one intersection
+    intersection_data = intersections[intersection_name] # Get the intersection data for that one intersection
+    intersection_coords = intersection_data['coords']
+
+    # set up lanes
+
+    approaches=[] # n,e,s,w
+    approaches.append([Queue() for x in range(intersection_data['north']['inlanes'])])
+    approaches.append([Queue() for x in range(intersection_data['east']['inlanes'])])
+    approaches.append([Queue() for x in range(intersection_data['south']['inlanes'])])
+    approaches.append([Queue() for x in range(intersection_data['west']['inlanes'])])
+
+    waiting_times_all=[]
+    average_waiting_time_all=[]
+    events_per_second_all=[]
+    max_queue_len_all=[]
+    throughputs=[]
+    traffic_flow_efficiency_all=[]
+
+    datetimes=["2024-12-01H09M00","2024-12-01H12M00","2024-12-01H15M00","2024-12-01H18M00","2024-12-01H21M00",]
+    num_simulations=10
+    num_vehicles=1000
+
+    for date in datetimes:
+        for i in range(num_simulations):
+            waiting_times,average_waiting_time,events_per_second,max_queue_len,avg_intersection_clear_time = run_simulation(date, OAKFOUL_VIC, intersection_coords, approaches, num_vehicles)
+            waiting_times_all.append(waiting_times)
+            average_waiting_time_all.append(average_waiting_time)
+            events_per_second_all.append(events_per_second)
+            max_queue_len_all.append(max_queue_len)
+            traffic_flow_efficiency_all.append(avg_intersection_clear_time)
+            throughputs.append(events_per_second)
+        
+        throughputs_ci = confidence_interval(throughputs,0.05)
+        low = throughputs_ci[0]
+        high = throughputs_ci[1]
+
+        throughputs_mean = np.mean(throughputs)
+
+        print(f'Metrics for fixed light control, over {num_simulations} runs, at {date}')
+        print('Average waiting time', round(sum(average_waiting_time_all)/len(average_waiting_time_all),4))
+        print(f'Throughput/min CI @95% [{round(low*60,4)}, {round(high*60,4)}], mu={round(throughputs_mean*60,4)}')
+        print('Max queue length', round(sum(max_queue_len_all)/len(max_queue_len_all),4))
+        print('Traffic flow efficiency (avg time to clear intersection)', round(np.mean(traffic_flow_efficiency_all),4))
+    
 if __name__ == '__main__':
     main()
