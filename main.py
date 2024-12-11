@@ -10,6 +10,7 @@ import heapq
 from heapq import heappush, heappop
 from collections import deque
 
+# Long-Lat for Traffic Lights
 OAKFOUL_VIC = "48.426442.-123.3226985"
 PANDORAFERN_VIC = "48.426829.-123.34534"
 FORTFOUL_VIC = "48.432167.-123.322405"
@@ -24,6 +25,9 @@ AVENIDARIOBRANCO_RIO = "-22.90577.-43.177457"
 WEST34TH_NY = "40.748454.-73.984565"
 AVESUFFREN_PARIS = "48.854664.2.295528"
 
+# Constants
+DIST_BETWEEN_CARS = 8.96 # meters
+AVG_CAR_LENGTH = 4.48 # meters
 
 class Lane:
     def __init__(self):
@@ -339,43 +343,45 @@ def main():
 
     coords = intersection_data['coords']
 
+    # Gather args for intersections in TomTom data
     ways=[]
+    args_tomtom = {}
     for entry in data_flat:
         traffic_light_coord = entry['traffic_light_coord']
         if (traffic_light_coord["lat"] == str(coords["lat"]) and traffic_light_coord["long"] == str(coords["long"])):
             ways.append(entry)
-            current_speed = entry["currentSpeed"]
-            free_flow_speed = entry["freeFlowSpeed"]
-            current_travel_time = entry["currentTravelTime"]
-            free_flow_travel_time = entry["freeFlowTravelTime"]
+            args_tomtom['current_speed'] = entry['currentSpeed']
+            args_tomtom['free_flow_speed'] = entry["freeFlowSpeed"]
+            args_tomtom['current_travel_time'] = entry["currentTravelTime"]
+            args_tomtom['free_flow_travel_time'] = entry["freeFlowTravelTime"]
 
+    num_inlanes = 0
+
+    # Get number of in lanes
+    for approach in approaches:
+        for inlane in approach:
+            num_inlanes += 1
+
+    # Calculate lambda for the whole system
+    lambda_free_flow = args_tomtom['free_flow_speed'] / (3.6 * (DIST_BETWEEN_CARS + AVG_CAR_LENGTH)) # s_Free / (3.6 * (c + L_car))
+    congestion_factor = args_tomtom['free_flow_speed'] / args_tomtom['current_speed'] # s_Free / s_Current
+
+    lambda_system = num_inlanes * lambda_free_flow * congestion_factor # lambda = N_{In Lanes} * lambda_{Free Flow per Lane} * R
+
+    # Calculate lambda for each in lane
+    lambdas = []
+
+    # seperate lambda per queue/inlane, per approach
+    for approach in approaches:
+        dir_lambdas = []
+        for inlane in approach:
+            dir_lambdas.append(lambda_system / num_inlanes)
+        lambdas.append(dir_lambdas)
 
     # simulate lanes
-
     num_events = 1000
-    lambdas=[ # seperate lambda per queue/inlane, per approach
-        [1,2], # n
-        [2,3], # e
-        [3,4], # s
-        [4,5]  # w
-    ] 
 
-    # Since we don't have lambda per lane and instead over the entire intersection,
-    # we can simply band-aid this to put lambda/8 for each lambda
-    lambda_ = 5
-
-    # sum up number of lanes
-    num_lanes = 0 
-    for i in range(len(lambdas)):
-        for j in range(len(lambdas[i])):
-            num_lanes+=1
-
-    # set lambda/num_lanes for each lane
-    for i,lambs_in_approach in enumerate(lambdas): # approach
-        for j,lam_lane in enumerate(lambs_in_approach): # lanes
-            lambdas[i][j] = lambda_/num_lanes
-
-    # fill inter-arrival-times for approaches->lanes->IAT
+    # fill inter-arrival times for approaches->lanes->IAT
     simulate_arrivals(approaches, lambdas, num_events)
 
     # merge queues into one giant queue (with queue as an attribute)    
