@@ -10,6 +10,21 @@ import heapq
 from heapq import heappush, heappop
 from collections import deque
 
+OAKFOUL_VIC = "48.426442.-123.3226985"
+PANDORAFERN_VIC = "48.426829.-123.34534"
+FORTFOUL_VIC = "48.432167.-123.322405"
+JOHNSONFERN_VIC = "48.4254427.-123.345458"
+OAKMONTEREY_VIC = "48.4264785.-123.3140903"
+OAKEGLIN_VIC = "48.4265087.-123.3193121"
+PANDORAFORT_VIC = "48.4265366.-123.3368677"
+PANDORAJOHNSON_VIC = "48.4267701.-123.3426018"
+GOLDSMITHFOUL_VIC = "48.4304871.-123.3225101"
+CADBOROFLOR_VIC = "48.4323992.-123.3209411"
+AVENIDARIOBRANCO_RIO = "-22.90577.-43.177457"
+WEST34TH_NY = "40.748454.-73.984565"
+AVESUFFREN_PARIS = "48.854664.2.295528"
+
+
 class Lane:
     def __init__(self):
         pass
@@ -20,45 +35,81 @@ class Intersection:
     def __init__(self, approaches:List[Approach]):
         self.approaches=approaches
 
-def read_tomtom_data(num_times=100) -> dict:
+def read_tomtom_data(date_times: list = [], intersections = [], error_on_not_found: bool = True) -> dict:
     '''
-    reads tomtom data into data dict object and adds traffic light coordinate
+    Reads TomTom data based on a list of dates and hours. The data is read into a dictionary
+    object, and traffic light coordinates are added.
+
+    Parameters:
+    date_times (list): A list of date-time values (dates and hours) for which the data should 
+                        be fetched. If date_times is empty, it is preceived as wanting all dates and times.
+    intersections (list): A list of strings of long and lat sepearted by a . for which the data should 
+                        be fetched. If intersections is empty, it is preceived as wanting all intersections available.
+    error_on_not_found (bool): If True, an error is raised when the data is not found. If False, 
+                               the function proceeds without raising an error.
+
+    Returns:
+    dict: A dictionary containing the TomTom data and traffic light coordinates.
     '''
+    # Checks to see if TomTom data exists
     cwd = os.getcwd()
     if not os.path.isdir('./cache/TOMTOM'):
         print('couldnt access ./cache/TOMTOM!')
         exit(1)
     os.chdir('./cache/TOMTOM')
     data = {}
-    i = 0
-    for dir in os.listdir('.'):
-        if i < num_times:
+
+    # If we provide no date_times then it will search all directories
+    if not date_times:
+        for dir in os.listdir('.'):
             if os.path.isdir(dir):
-                os.chdir(dir)
-                if dir not in data.keys():
-                    data[dir] = {}
-                files = os.listdir('.')
-                for file in files: # also date
-                    if os.path.isfile(file):
-                        with open(file,'r') as f:
-                            contents = f.read()
-                            if len(contents)==0:
-                                continue
-                            try:
-                                entry = json.loads(contents) # also coords
-                                r = re.findall(r'(-?\d+\.\d+)', file)
-                                entry['flowSegmentData']['traffic_light_coord'] = {'lat': r[0], 'long': r[1]}
-                            except:
-                                print('parse fail', contents)
-                                exit(1)
-                            if file not in data[dir].keys():
-                                data[dir][file] = entry['flowSegmentData']
-                            else:
-                                print(f"WARN: got duplicate data->'${dir}'->'${file}'")
+                date_times.append(dir)
+
+    # Loop through directories and fetch all the intersections requested
+    for date_time in date_times:
+        if os.path.isdir(f'./{date_time}'):
+            os.chdir(f'./{date_time}')
+            if date_time not in data.keys():
+                    data[date_time] = {}
+            # If we provide no intersections then it will fetch all intersections
+            if not intersections:
+                intersections = os.listdir('.')
+            else:
+                # Rename all intersections with the date at the end because
+                # that's how the file is structured
+                for i, intersection in enumerate(intersections):
+                    intersections[i] = intersection + '.' + date_time + '.txt'
+            # Loop through all the files provided and reads the contents into the dict and adds the coords
+            for intersection in intersections:
+                if os.path.isfile(intersection):
+                    with open(intersection, 'r') as f:
+                        contents = f.read()
+                        if len(contents)==0:
+                            continue
+                        try:
+                            entry = json.loads(contents) # also coords
+                            r = re.findall(r'(-?\d+\.\d+)', intersection)
+                            entry['flowSegmentData']['traffic_light_coord'] = {'lat': r[0], 'long': r[1]}
+                        except:
+                            print('parse fail', contents)
+                            exit(1)
+                        if intersection not in data[date_time].keys():
+                            data[date_time][intersection] = entry['flowSegmentData']
+                        else:
+                            print(f"WARN: got duplicate data->'${date_time}'->'${intersection}'")
+                else:
+                    if error_on_not_found:
+                        print(f'Error: Couldnt find {intersection}')
+                        exit(1)
+                    else:
+                        print(f"Warning: Couldn't find {intersection}")
             os.chdir('..')
-            i += 1
         else:
-            break
+            if error_on_not_found:
+                print(f'Error: Couldnt find {date_time}')
+                exit(1)
+            else:
+                print(f"Warning: Couldn't find {date_time}")
     os.chdir(cwd)
     return data
 
@@ -267,12 +318,10 @@ def simulate_intersection_fixed(merged_arrival_times):
 
 
 def main():
-    data = read_tomtom_data(4)
-    data_flat = flatten(data)
-
-    intersections = read_intersections()
-    intersection_name = list(intersections.keys())[0] # only the first
-    intersection_data = intersections[intersection_name]
+    # Read in the intersection lane data
+    intersections = read_intersections() # This reads our manually create json file to get the lane data
+    intersection_name = list(intersections.keys())[0] # Only get one intersection
+    intersection_data = intersections[intersection_name] # Get the intersection data for that one intersection
 
     # set up lanes
 
@@ -281,6 +330,10 @@ def main():
     approaches.append([Queue() for x in range(intersection_data['east']['inlanes'])])
     approaches.append([Queue() for x in range(intersection_data['south']['inlanes'])])
     approaches.append([Queue() for x in range(intersection_data['west']['inlanes'])])
+
+    # Read in the TomTom data for the intersections
+    data = read_tomtom_data(date_times=["2024-12-01H21M00"], intersections=[OAKFOUL_VIC]) # Reads only for one date
+    data_flat = flatten(data)
 
     # get traffic for this coordinate
 
@@ -291,7 +344,12 @@ def main():
         traffic_light_coord = entry['traffic_light_coord']
         if (traffic_light_coord["lat"] == str(coords["lat"]) and traffic_light_coord["long"] == str(coords["long"])):
             ways.append(entry)
-  
+            current_speed = entry["currentSpeed"]
+            free_flow_speed = entry["freeFlowSpeed"]
+            current_travel_time = entry["currentTravelTime"]
+            free_flow_travel_time = entry["freeFlowTravelTime"]
+
+
     # simulate lanes
 
     num_events = 1000
