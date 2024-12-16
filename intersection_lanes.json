@@ -1,0 +1,295 @@
+{
+    "oak bay ave, foul bay rd": {
+        "coords": {
+            "lat": 48.426442,
+            "long": -123.3226985
+        },
+        "interLength": 26.64,
+        "north": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "south": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    },
+    "pandora ave, fernwood rd": {
+        "coords": {
+            "lat": 48.426829,
+            "long": -123.34534
+        },
+        "interLength": 21.20,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 2
+        },
+        "south": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    },
+    "fort st, foul bay rd": {
+        "coords": {
+            "lat": 48.432167,
+            "long": -123.322405
+        },
+        "interLength": 29.4,
+        "north": {
+            "inlanes": 3,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 2,
+            "outlanes": 2
+        },
+        "south": {
+            "inlanes": 3,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    },
+    "johnson st, fernwood rd": {
+        "coords": {
+            "lat": 48.4254427,
+            "long": -123.345458
+        },
+        "interLength": 19.94,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 2
+        },
+        "south": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    },
+    "oak bay ave, monterey ave": {
+        "coords": {
+            "lat": 48.4264785,
+            "long": -123.3140903
+        },
+        "interLength": 19.54,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "south": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 1,
+            "outlanes": 1
+        }
+    },
+    "oak bay ave, elgin rd": {
+        "coords": {
+            "lat": 48.4265087,
+            "long": -123.3193121
+        },
+        "interLength": 19,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "south": [],
+        "west": {
+            "inlanes": 1,
+            "outlanes": 1
+        }
+    },
+    "pandora ave, fort st": {
+        "coords": {
+            "lat": 48.4265366,
+            "long": -123.3368677
+        },
+        "interLength": 62.52,
+        "north": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "south": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    },
+    "pandora ave, johnson st": {
+        "coords": {
+            "lat": 48.4267701,
+            "long": -123.3426018
+        },
+        "interLength": 19.4,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 0
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 0
+        },
+        "south": {
+            "inlanes": 0,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 0,
+            "outlanes": 1
+        }
+    },
+    "goldsmith st, foul bay rd": {
+        "coords": {
+            "lat": 48.4304871,
+            "long": -123.3225101
+        },
+        "interLength": 24.98,
+        "north": {
+            "inlanes": 2,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "south": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "west": []
+    },
+    "cadboro bay rd, florence st": {
+        "coords": {
+            "lat": 48.4323992,
+            "long": -123.3209411
+        },
+        "interLength": 24.82,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 1,
+            "outlanes": 2
+        },
+        "south": {
+            "inlanes": 3,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    },
+    "140 Avenida Rio Branco": {
+        "coords": {
+            "lat": -22.90577,
+            "long": -43.177457
+        },
+        "interLength": 21.56,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 0
+        },
+        "east": {
+            "inlanes": 0,
+            "outlanes": 1
+        },
+        "south": {
+            "inlanes": 0,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 1,
+            "outlanes": 0
+        }
+    },
+    "W 34th St.": {
+        "coords": {
+            "lat": 40.748454,
+            "long": -73.984565
+        },
+        "interLength": 37.54,
+        "north": {
+            "inlanes": 5,
+            "outlanes": 0
+        },
+        "east": {
+            "inlanes": 2,
+            "outlanes": 2
+        },
+        "west": {
+            "inlanes": 3,
+            "outlanes": 2
+        },
+        "south": {
+            "inlanes": 0,
+            "outlanes": 4
+        }
+    },
+    "Av. De Suffren": {
+        "coords": {
+            "lat": 48.854664, 
+            "long": 2.295528
+        },
+        "interLength": 33.76,
+        "north": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "east": {
+            "inlanes": 3,
+            "outlanes": 1
+        },
+        "west": {
+            "inlanes": 1,
+            "outlanes": 1
+        },
+        "south": {
+            "inlanes": 2,
+            "outlanes": 1
+        }
+    }
+}

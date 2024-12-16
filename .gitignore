@@ -1,7 +1,2 @@
 .env
 .venv
-cache
-plots
-testing
-intersection_lanes.json
-logfile.log

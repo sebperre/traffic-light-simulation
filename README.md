@@ -1,4 +1,8 @@
-# traffic-light-simulation
+# traffic-light-simulation UVic CSC446 Project
+
+# Group members: 
+- Sebastien P [sebperre](https://github.com/sebperre)
+- Henry GH [cowpod](https://github.com/cowpod)
 
 # Setup
 

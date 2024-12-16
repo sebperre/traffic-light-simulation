@@ -1,0 +1,60 @@
+{
+    "flowSegmentData": {
+        "frc": "FRC6",
+        "currentSpeed": 13,
+        "freeFlowSpeed": 18,
+        "currentTravelTime": 129,
+        "freeFlowTravelTime": 93,
+        "confidence": 0.98,
+        "roadClosure": false,
+        "coordinates": {
+            "coordinate": [
+                {
+                    "latitude": -22.906351852017508,
+                    "longitude": -43.178420797075546
+                },
+                {
+                    "latitude": -22.906241829611577,
+                    "longitude": -43.17823706713304
+                },
+                {
+                    "latitude": -22.905988428382102,
+                    "longitude": -43.17783339464336
+                },
+                {
+                    "latitude": -22.90573494790851,
+                    "longitude": -43.177409602974734
+                },
+                {
+                    "latitude": -22.9055136645865,
+                    "longitude": -43.17702336414817
+                },
+                {
+                    "latitude": -22.904959758651223,
+                    "longitude": -43.17607385838011
+                },
+                {
+                    "latitude": -22.904930263912636,
+                    "longitude": -43.176014848785
+                },
+                {
+                    "latitude": -22.904576180913708,
+                    "longitude": -43.175387216851135
+                },
+                {
+                    "latitude": -22.90431868420941,
+                    "longitude": -43.17495538081204
+                },
+                {
+                    "latitude": -22.904160481078435,
+                    "longitude": -43.174671068618096
+                },
+                {
+                    "latitude": -22.904104119830635,
+                    "longitude": -43.174582559535054
+                }
+            ]
+        },
+        "@version": "traffic-service-flow 1.0.120"
+    }
+}

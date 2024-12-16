@@ -1,0 +1,64 @@
+{
+    "flowSegmentData": {
+        "frc": "FRC1",
+        "currentSpeed": 8,
+        "freeFlowSpeed": 21,
+        "currentTravelTime": 262,
+        "freeFlowTravelTime": 100,
+        "confidence": 1,
+        "roadClosure": false,
+        "coordinates": {
+            "coordinate": [
+                {
+                    "latitude": 40.74844251852611,
+                    "longitude": -73.9845488792854
+                },
+                {
+                    "latitude": 40.748665084969225,
+                    "longitude": -73.9850839795963
+                },
+                {
+                    "latitude": 40.74876300151753,
+                    "longitude": -73.98532269663329
+                },
+                {
+                    "latitude": 40.749259248681035,
+                    "longitude": -73.98649750435561
+                },
+                {
+                    "latitude": 40.749284711647256,
+                    "longitude": -73.98655919478435
+                },
+                {
+                    "latitude": 40.749657513598414,
+                    "longitude": -73.98745371171673
+                },
+                {
+                    "latitude": 40.74978362320482,
+                    "longitude": -73.98775680452384
+                },
+                {
+                    "latitude": 40.74987480746006,
+                    "longitude": -73.98795260657892
+                },
+                {
+                    "latitude": 40.74992306485598,
+                    "longitude": -73.98806525601091
+                },
+                {
+                    "latitude": 40.750317325325746,
+                    "longitude": -73.98901743983386
+                },
+                {
+                    "latitude": 40.75088194784202,
+                    "longitude": -73.99035318030214
+                },
+                {
+                    "latitude": 40.75099059193008,
+                    "longitude": -73.99061201327669
+                }
+            ]
+        },
+        "@version": "traffic-service-flow 1.0.120"
+    }
+}
