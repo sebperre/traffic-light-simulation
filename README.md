@@ -1,6 +1,6 @@
 # Traffic Light Simulation UVic CSC446 Project
 
-Please click on [here](https://github.com/sebperre/traffic-light-simulation/blob/main/CSC_446_Project_Report.pdf) to view the paper.
+Please click [here](https://github.com/sebperre/traffic-light-simulation/blob/main/CSC_446_Project_Report.pdf) to view the paper.
 
 # Group members: 
 - Sebastien P [sebperre](https://github.com/sebperre)
